@@ -1,7 +1,7 @@
-import discord
+
 from discord.ext import commands
 
-class CommandCog(commands.Cog):
+class chat(commands.Cog):
     def __init__(self, client):
         self.client = client
 
@@ -16,4 +16,4 @@ class CommandCog(commands.Cog):
         await ctx.send('Pong')
 
 def setup(client):
-    client.add_cog(CommandCog(client))
+    client.add_cog(chat(client))
