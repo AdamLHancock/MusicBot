@@ -1,4 +1,3 @@
-
 from discord.ext import commands
 
 class chat(commands.Cog):
