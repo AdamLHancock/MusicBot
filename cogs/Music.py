@@ -70,18 +70,6 @@ class Music(commands.Cog):
         await ctx.send(f'Now playing: {query}')
 
     @commands.command()
-    async def pause(self, ctx):
-        #check first to see if playing music
-        ctx.voice_client.pause()
-        await ctx.send('Music has been paused')
-
-    @commands.command()
-    async def resume(self, ctx):
-        #check to see if music has been paused
-        ctx.voice_client.resume()
-
-
-    @commands.command()
     async def yt(self, ctx, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
 
@@ -101,6 +89,50 @@ class Music(commands.Cog):
 
         await ctx.send('Now playing: {}'.format(player.title))
 
+    # @commands.command()
+    # async def playlist(self, ctx, songNum):
+    #     #plays a song set as a pre-downloaded and preset
+
+    # @playlist.before_invoke
+    @play.before_invoke
+    @yt.before_invoke
+    @stream.before_invoke
+    async def ensure_voice(self, ctx):
+        if ctx.voice_client is None:
+            if ctx.author.voice:
+                await ctx.author.voice.channel.connect()
+            else:
+                await ctx.send("You are not connected to a voice channel.")
+                raise commands.CommandError("Author not connected to a voice channel.")
+        elif ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+
+    @commands.command()
+    async def pause(self, ctx):
+        """Pauses the song currently playing"""
+
+        if ctx.voice_client.is_playing():
+            ctx.voice_client.pause()
+            await ctx.send('Music has been paused')
+        else:
+            return await ctx.send('Bot is paused')
+
+    @commands.command()
+    async def resume(self, ctx):
+        """Resumes the song currently playing"""
+
+        if ctx.voice_client.is_paused():
+            ctx.voice_client.resume()
+            await ctx.send('Music has been resumed')
+        else:
+            return await ctx.send('Bot is not paused')
+
+    @pause.before_invoke
+    @resume.before_invoke
+    async def confirm_in_voice(self, ctx):
+        if ctx.voice_client is None or self.client.voice.channel is not ctx.author.voice.channel:
+            await ctx.send(f'Bot is not in {ctx.author.voice.channel} with {ctx.author}')
+
     @commands.command()
     async def volume(self, ctx, volume: int):
         """Changes the player's volume"""
@@ -118,26 +150,10 @@ class Music(commands.Cog):
         await ctx.voice_client.disconnect()
 
     # @commands.command()
-    # async def playlist(self, ctx, songNum):
-    #     #plays a song set as a pre-downloaded and preset 
-
-    # @commands.command()
     # async def download(self, ctx, * url):
 
 
-    # @playlist.before_invoke
-    @play.before_invoke
-    @yt.before_invoke
-    @stream.before_invoke
-    async def ensure_voice(self, ctx):
-        if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
-            else:
-                await ctx.send("You are not connected to a voice channel.")
-                raise commands.CommandError("Author not connected to a voice channel.")
-        elif ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
+    
 
 def setup(client):
     client.add_cog(Music(client))
