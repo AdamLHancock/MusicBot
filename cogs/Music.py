@@ -4,6 +4,8 @@ import discord
 from discord.ext import commands
 
 import youtube_dl
+import os
+
 
 ytdl_opts = {
     'format': 'bestaudio/best',
@@ -35,7 +37,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, url, *, loop=None, stream=False, song_name=None):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
@@ -44,6 +46,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
+        if song_name is not None:
+            song_name = song_name + os.path.splitext(filename)[1]
+            os.rename(filename, song_name)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_opts), data=data)
 
 
@@ -53,7 +58,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
-        """Joins a voice channel"""
+        """~join [channel] - Joins a voice channel"""
 
         if ctx.voice_client is not None:
             return await ctx.voice_client.move_to(channel)
@@ -70,16 +75,6 @@ class Music(commands.Cog):
         await ctx.send(f'Now playing: {query}')
 
     @commands.command()
-    async def yt(self, ctx, *, url):
-        """Plays from a url (almost anything youtube_dl supports)"""
-
-        async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.client.loop)
-            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-
-        await ctx.send('Now playing: {}'.format(player.title))
-
-    @commands.command()
     async def stream(self, ctx, *, url):
         """Streams from a url (same as yt, but doesn't predownload)"""
 
@@ -89,13 +84,48 @@ class Music(commands.Cog):
 
         await ctx.send('Now playing: {}'.format(player.title))
 
-    # @commands.command()
-    # async def playlist(self, ctx, songNum):
-    #     #plays a song set as a pre-downloaded and preset
+    @commands.command()
+    async def download(self, ctx, arg, *, url):
+        """Downloads a song for the playlist"""
 
-    # @playlist.before_invoke
+        await YTDLSource.from_url(url, loop=self.client.loop, song_name=arg)
+        await ctx.send(f'Downloaded {arg}')
+
+    # playlists are stored in folders with the ctx.author's name and accessed the same way
+    @commands.command()
+    async def list_playlist(self, ctx):
+        """Lists the songs on the playlist"""
+        songs = ''
+        i = 1
+        for song in playlist:
+            songs = f'{songs}{i}. {song} \n'
+            i = i + 1
+        await ctx.send(f'The Playlist:\n{songs}')
+
+    @commands.command()
+    async def saved_songs(self, ctx):
+        list_of_songs = ''
+        for files in os.listdir('./'):
+            if os.path.splitext(files)[1] == '.webm':
+                list_of_songs = list_of_songs + files + '\n'
+        
+        await ctx.send(f'The list of songs:\n{list_of_songs}')
+
+    @commands.command()
+    async def add_to_playlist(self, ctx, song):
+        for songs in playlist:
+            if songs == song:
+                return await ctx.send(f'{song} is already in the playlist')
+        
+        playlist.append(song)
+        await ctx.send(f'{song} has been added to the playlist')
+
+    @commands.command()
+    async def play_from_playlist(self, ctx, num: int):
+        num = num - 1
+        self.play(ctx, query=playlist[num])
+
     @play.before_invoke
-    @yt.before_invoke
     @stream.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
@@ -147,12 +177,7 @@ class Music(commands.Cog):
     async def stop(self, ctx):
         """Stops and disconnects the bot from voice"""
 
-        await ctx.voice_client.disconnect()
-
-    # @commands.command()
-    # async def download(self, ctx, * url):
-
-
+        await ctx.voice_client.disconnect() 
     
 
 def setup(client):
