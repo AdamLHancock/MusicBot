@@ -8,7 +8,7 @@ client = discord.Client()
 async def on_ready():
     print('We have logged in as {0.user}'.format(client))
 
-client = commands.Bot(command_prefix = '~')
+client = commands.Bot(command_prefix = '-')
 
 @client.command()
 async def load(ctx, extension):
