@@ -1,2 +1,4 @@
 # ignore the token for the bot
-token.py
+bot_token.py
+*.mp3
+*.webm
